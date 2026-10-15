@@ -1,3 +1,4 @@
+import asyncio
 #!/usr/bin/env python
 """pygame.examples.aliens
 
@@ -233,7 +234,7 @@ class Score(pygame.sprite.Sprite):
             self.image = self.font.render(msg, False, self.color)
 
 
-def main():
+async def main():
     # Initialize pygame
     pygame.mixer.pre_init(44100, 32, 2, 1024)
     pygame.init()
@@ -303,98 +304,128 @@ def main():
     if pygame.font:
         all_sprites.add(Score())
 
-    # Run our main loop whilst the player is alive.
-    while player.alive():
-        # Erase last frame by blitting the background to the screen
-        screen.blit(background, (0, 0))
+    # Run our main loop with restart capability
+    while True:
+        all_sprites.empty()
+        aliens.empty()
+        shots.empty()
+        bombs.empty()
+        lastalien.empty()
+        SCORE = 0
+        alienreload = ALIEN_RELOAD
+        player = Player()
+        Alien()
+        if pygame.font:
+            all_sprites.add(Score())
+        if pygame.mixer:
+            pygame.mixer.music.play(-1)
 
-        # get input
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                return
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_f:
-                    if not fullscreen:
-                        print("Changing to FULLSCREEN")
-                        screen_backup = screen.copy()
-                        screen = pygame.display.set_mode(
-                            SCREENRECT.size,
-                            winstyle | pygame.FULLSCREEN | pygame.SCALED,
-                        )
-                        screen.blit(screen_backup, (0, 0))
-                    else:
-                        print("Changing to windowed mode")
-                        screen_backup = screen.copy()
-                        screen = pygame.display.set_mode(SCREENRECT.size, winstyle)
-                        screen.blit(screen_backup, (0, 0))
-                    pygame.display.flip()
-                    fullscreen = not fullscreen
+        while player.alive():
+            # Erase last frame by blitting the background to the screen
+            screen.blit(background, (0, 0))
 
-        keystate = pygame.key.get_pressed()
+            # get input
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                    pygame.quit()
+                    return
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_f:
+                        if not fullscreen:
+                            screen_backup = screen.copy()
+                            screen = pygame.display.set_mode(
+                                SCREENRECT.size,
+                                winstyle | pygame.FULLSCREEN | pygame.SCALED,
+                            )
+                            screen.blit(screen_backup, (0, 0))
+                        else:
+                            screen_backup = screen.copy()
+                            screen = pygame.display.set_mode(SCREENRECT.size, winstyle)
+                            screen.blit(screen_backup, (0, 0))
+                        pygame.display.flip()
+                        fullscreen = not fullscreen
 
-        # update all the sprites
-        all_sprites.update()
+            keystate = pygame.key.get_pressed()
 
-        # handle player input
-        direction = keystate[pygame.K_RIGHT] - keystate[pygame.K_LEFT]
-        player.move(direction)
-        firing = keystate[pygame.K_SPACE]
-        if not player.reloading and firing and len(shots) < MAX_SHOTS:
-            Shot(player.gunpos())
-            if pygame.mixer:
-                shoot_sound.play()
-        player.reloading = firing
+            # update all the sprites
+            all_sprites.update()
 
-        # Create new alien
-        if alienreload:
-            alienreload = alienreload - 1
-        elif not int(random.random() * ALIEN_ODDS):
-            Alien()
-            alienreload = ALIEN_RELOAD
+            # handle player input
+            direction = keystate[pygame.K_RIGHT] - keystate[pygame.K_LEFT]
+            player.move(direction)
+            firing = keystate[pygame.K_SPACE]
+            if not player.reloading and firing and len(shots) < MAX_SHOTS:
+                Shot(player.gunpos())
+                if pygame.mixer:
+                    shoot_sound.play()
+            player.reloading = firing
 
-        # Drop bombs
-        if lastalien and not int(random.random() * BOMB_ODDS):
-            Bomb(lastalien.sprite)
+            # Create new alien
+            if alienreload:
+                alienreload = alienreload - 1
+            elif not int(random.random() * ALIEN_ODDS):
+                Alien()
+                alienreload = ALIEN_RELOAD
 
-        # Detect collisions between aliens and players.
-        for alien in pygame.sprite.spritecollide(player, aliens, True):
-            if pygame.mixer:
-                boom_sound.play()
-            Explosion(alien)
-            Explosion(player)
-            SCORE = SCORE + 1
-            player.kill()
+            # Drop bombs
+            if lastalien and not int(random.random() * BOMB_ODDS):
+                Bomb(lastalien.sprite)
 
-        # See if shots hit the aliens.
-        for alien in pygame.sprite.groupcollide(aliens, shots, True, True).keys():
-            if pygame.mixer:
-                boom_sound.play()
-            Explosion(alien)
-            SCORE = SCORE + 1
+            # Detect collisions between aliens and players.
+            for alien in pygame.sprite.spritecollide(player, aliens, True):
+                if pygame.mixer:
+                    boom_sound.play()
+                Explosion(alien)
+                Explosion(player)
+                SCORE = SCORE + 1
+                player.kill()
 
-        # See if alien bombs hit the player.
-        for bomb in pygame.sprite.spritecollide(player, bombs, True):
-            if pygame.mixer:
-                boom_sound.play()
-            Explosion(player)
-            Explosion(bomb)
-            player.kill()
+            # See if shots hit the aliens.
+            for alien in pygame.sprite.groupcollide(aliens, shots, True, True).keys():
+                if pygame.mixer:
+                    boom_sound.play()
+                Explosion(alien)
+                SCORE = SCORE + 1
 
-        # draw the scene
-        all_sprites.draw(screen)
-        pygame.display.flip()
+            # See if alien bombs hit the player.
+            for bomb in pygame.sprite.spritecollide(player, bombs, True):
+                if pygame.mixer:
+                    boom_sound.play()
+                Explosion(player)
+                Explosion(bomb)
+                player.kill()
 
-        # cap the framerate at 40fps. Also called 40HZ or 40 times per second.
-        clock.tick(40)
+            # draw the scene
+            all_sprites.draw(screen)
+            pygame.display.flip()
 
-    if pygame.mixer:
-        pygame.mixer.music.fadeout(1000)
-    pygame.time.wait(1000)
+            clock.tick(40)
+            await asyncio.sleep(0)
+
+        if pygame.mixer:
+            pygame.mixer.music.fadeout(1000)
+
+        font = pygame.font.Font(None, 36) if pygame.font else None
+        game_over = True
+        while game_over:
+            screen.blit(background, (0, 0))
+            all_sprites.draw(screen)
+            if font:
+                text = font.render("GAME OVER - Press SPACE to restart", True, (255, 255, 255))
+                text_rect = text.get_rect(center=SCREENRECT.center)
+                screen.blit(text, text_rect)
+            pygame.display.flip()
+            clock.tick(40)
+            await asyncio.sleep(0)
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                    pygame.quit()
+                    return
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                    game_over = False
 
 
 # call the "main" function if running this script
 if __name__ == "__main__":
-    main()
-    pygame.quit()
+    asyncio.run(main())
