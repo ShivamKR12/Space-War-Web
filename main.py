@@ -271,10 +271,10 @@ async def main():
     pygame.display.flip()
 
     # load the sound effects
-    boom_sound = load_sound("boom.wav")
-    shoot_sound = load_sound("car_door.wav")
+    boom_sound = load_sound("boom.ogg")
+    shoot_sound = load_sound("car_door.ogg")
     if pygame.mixer:
-        music = os.path.join(main_dir, "assets", "house_lo.wav")
+        music = os.path.join(main_dir, "assets", "house_lo.ogg")
         pygame.mixer.music.load(music)
         pygame.mixer.music.play(-1)
 
