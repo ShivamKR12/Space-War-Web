@@ -8,7 +8,6 @@ on:
       - '**.py'
       - '**.spec'
       - '**.ini'
-      - 'default.tmpl'
       - 'requirements.txt'
       - 'setup.py'
       - '.github/workflows/*.yml'
